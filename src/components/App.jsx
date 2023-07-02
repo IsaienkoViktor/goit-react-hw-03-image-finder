@@ -1,47 +1,216 @@
-import { getImages } from '../Service/ImageApi.js';
 import { Component } from 'react';
+import './App.css';
+import { fetchImages, PER_PAGE } from '../Service/Api';
+import { Searchbar } from './Searchbar/Searchbar';
+import { ImageGallery } from './ImageGallery/ImageGallery';
+import { Button } from './Button/Button';
+import { Loader } from './Loader/Loader';
+import { Modal } from './Modal/Modal';
+import { toast } from 'react-toastify';
 
 export class App extends Component {
   state = {
-    page: 1,
     query: '',
+    page: 1,
     images: [],
-    showBtn: false,
+    loading: false,
+    error: null,
+    showModal: false,
+    largeImage: '',
+    currentImgPerPage: null,
   };
 
-  componentDidUpdate(prevProps, prevState) {
-    const { page, query } = this.state;
-    if (prevState.page !== page || prevState.query !== query) {
-      getImages(query, page).then(({ photos, total_results }) => {
-        console.log(photos);
-        this.setState(prevState => ({
-          images: [...prevState.images, ...photos],
-          showBtn: page < Math.ceil(total_results / 15),
-        }));
+  componentDidUpdate(_, prevState) {
+    const prevQuery = prevState.query;
+    const nextQuery = this.state.query;
+    if (prevQuery !== nextQuery) {
+      this.getImagesData();
+    }
+
+    if (this.state.page > 2) {
+      window.scrollTo({
+        top: document.documentElement.scrollHeight,
+        behavior: 'smooth',
       });
     }
   }
 
-  handelSubmit = query => {
-    this.setState({
-      query: query,
-      page: 1,
-      images: [],
-      showBtn: false,
+  handleFormSubmit = query => {
+    this.setState(() => {
+      return { query: query, page: 1, images: [] };
     });
   };
-  onClickButton = () => {
-    this.setState(prevState => ({
-      page: prevState.page + 1,
+
+  handleLoadMoreImg = () => {
+    this.getImagesData();
+  };
+
+  getImagesData = async () => {
+    try {
+      this.setState({ loading: true });
+      const { hits, totalHits } = await fetchImages(
+        this.state.page,
+        this.state.query
+      );
+      if (totalHits === 0) {
+        toast.error('Images not found ...');
+        this.setState({ loading: false, currentImgPerPage: null });
+        return;
+      }
+
+      const images = this.imagesArray(hits);
+
+      this.setState(prevState => {
+        return {
+          images: [...prevState.images, ...images],
+          currentImgPerPage: hits.length,
+          page: prevState.page + 1,
+        };
+      });
+    } catch (error) {
+      console.log(error);
+      this.setState({ error: error.message });
+    } finally {
+      this.setState({ loading: false });
+    }
+  };
+
+  imagesArray = data => {
+    return data.map(({ id, largeImageURL, tags, webformatURL }) => {
+      return { id, largeImageURL, tags, webformatURL };
+    });
+  };
+
+  toggleModal = () => {
+    this.setState(({ showModal }) => ({
+      showModal: !showModal,
     }));
+  };
+  openModal = largeImage => {
+    this.setState({ largeImage }, () => {
+      this.toggleModal();
+    });
   };
 
   render() {
+    const { images, loading, currentImgPerPage, error, showModal, largeImage } =
+      this.state;
     return (
-      <form>
-        <input type="text" />
-        <button>search</button>
-      </form>
+      <div className="App">
+        <Searchbar onSubmit={this.handleFormSubmit} />
+        {images.length > 0 && !error && (
+          <>
+            <ImageGallery images={images} onClick={this.openModal} />
+            {currentImgPerPage && currentImgPerPage < PER_PAGE && (
+              <p className="Message">No more pictures</p>
+            )}
+          </>
+        )}
+        {showModal && (
+          <Modal onClose={this.toggleModal}>
+            <img src={largeImage} alt="" />
+          </Modal>
+        )}
+        {currentImgPerPage === PER_PAGE && !loading && (
+          <Button onClick={this.handleLoadMoreImg} />
+        )}
+        {loading && <Loader />}
+      </div>
     );
   }
 }
+
+// import { getImages } from '../Service/ImageApi.js';
+// import { Component } from 'react';
+// import { SearchBar } from '../components/SearchBar/SearchBar.js';
+// import { ImageGallery } from './ImageGallery/ImageGallery.js';
+// import { Button } from './Button/Button.js';
+
+// export class App extends Component {
+//   state = {
+//     page: 1,
+//     query: '',
+//     images: [],
+//     showBtn: false,
+//   };
+
+//   componentDidUpdate(prevProps, prevState) {
+//     const { query } = this.state;
+//     if (query !== prevState.query) {
+//       this.fetchImages({ q: query });
+//     }
+//   }
+
+//   // componentDidMount() {
+//   //   this.fetchImages();
+//   // }
+
+//   fetchImages = async () => {
+//     try {
+//       const { hits } = await getImages({ q: this.state.query });
+//       this.setState({ images: hits });
+//       console.log(hits);
+//     } catch (error) {
+//       console.log(error);
+//     }
+//   };
+
+//   handleChangeQuery = query => {
+//     this.setState({ query });
+//   };
+
+//   // handelSubmit = query => {
+//   //   this.setState({
+//   //     query: query,
+//   //     page: 1,
+//   //     images: [],
+//   //     showBtn: false,
+//   //   });
+//   // };
+//   // onClickButton = () => {
+//   //   this.setState(prevState => ({
+//   //     page: prevState.page + 1,
+//   //   }));
+//   // };
+
+//   render() {
+//     return (
+//       <>
+//         <SearchBar handleChangeQuery={this.handleChangeQuery} />
+//         <ImageGallery images={}/>
+//         <Button/>
+//       </>
+//     );
+//   }
+// }
+
+// componentDidUpdate(prevProps, prevState) {
+//   const { page, query } = this.state;
+//   if (prevState.page !== page || prevState.query !== query) {
+//     getImages(query, page).then(({ hits, totalHits }) => {
+//       console.log(1);
+//       this.setState(prevState => ({
+//         images: [...prevState.images, ...hits],
+//         showBtn: page < Math.ceil(totalHits / 12),
+//       }));
+//     });
+//   }
+// }
+
+// async componentDidMount() {
+//     const { page, query } = this.state;
+//     await this.fetchImages(page, query);
+//   }
+
+//   async componentDidUpdate(prevProps, prevState) {
+//     const { page, query } = this.state;
+//     if (prevState.page !== page || prevState.query !== query) {
+//       await this.fetchImages(page, query);
+//     }
+//   }
+// fetchImages = async (page, query) => {
+//     await getImages(query, page).then(({ hits }) => {
+//       console.log(hits);
+//       this.setState({ images: hits });
+//     });
+//   };
