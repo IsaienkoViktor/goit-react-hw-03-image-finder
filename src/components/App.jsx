@@ -21,9 +21,8 @@ export class App extends Component {
   };
 
   componentDidUpdate(_, prevState) {
-    const prevQuery = prevState.query;
-    const nextQuery = this.state.query;
-    if (prevQuery !== nextQuery) {
+    const { query, page } = this.state;
+    if (query !== prevState.query || page !== prevState.page) {
       this.getImagesData();
     }
 
@@ -41,8 +40,15 @@ export class App extends Component {
     });
   };
 
+  // onClickButton = () => {
+  //   this.setState(prevState => ({
+  //     page: prevState.page + 1,
+  //   }));
+  // };
   handleLoadMoreImg = () => {
-    this.getImagesData();
+    this.setState(prevState => ({
+      page: prevState.page + 1,
+    }));
   };
 
   getImagesData = async () => {
@@ -64,7 +70,6 @@ export class App extends Component {
         return {
           images: [...prevState.images, ...images],
           currentImgPerPage: hits.length,
-          page: prevState.page + 1,
         };
       });
     } catch (error) {
@@ -167,11 +172,11 @@ export class App extends Component {
 //   //     showBtn: false,
 //   //   });
 //   // };
-//   // onClickButton = () => {
-//   //   this.setState(prevState => ({
-//   //     page: prevState.page + 1,
-//   //   }));
-//   // };
+// onClickButton = () => {
+//   this.setState(prevState => ({
+//     page: prevState.page + 1,
+//   }));
+// };
 
 //   render() {
 //     return (
